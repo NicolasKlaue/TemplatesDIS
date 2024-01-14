@@ -1,7 +1,7 @@
 package com.example.application.views;
 
-import com.example.application.views.about.AboutView;
-import com.example.application.views.helloworld.HelloWorldView;
+import com.example.application.views.ButtonTemplate.ButtonView;
+import com.example.application.views.GridTemplate.GridView;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.html.Footer;
@@ -24,6 +24,7 @@ public class MainLayout extends AppLayout {
 
     public MainLayout() {
         setPrimarySection(Section.DRAWER);
+        setDrawerOpened(false);
         addDrawerContent();
         addHeaderContent();
     }
@@ -51,8 +52,8 @@ public class MainLayout extends AppLayout {
     private SideNav createNavigation() {
         SideNav nav = new SideNav();
 
-        nav.addItem(new SideNavItem("Hello World", HelloWorldView.class, LineAwesomeIcon.GLOBE_SOLID.create()));
-        nav.addItem(new SideNavItem("About", AboutView.class, LineAwesomeIcon.FILE.create()));
+        nav.addItem(new SideNavItem("Button template", ButtonView.class, LineAwesomeIcon.GLOBE_SOLID.create()));
+        nav.addItem(new SideNavItem("Grid template", GridView.class, LineAwesomeIcon.FILE.create()));
 
         return nav;
     }

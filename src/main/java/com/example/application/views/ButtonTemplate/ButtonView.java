@@ -1,4 +1,4 @@
-package com.example.application.views.helloworld;
+package com.example.application.views.ButtonTemplate;
 
 import com.example.application.views.MainLayout;
 import com.vaadin.flow.component.Key;
@@ -10,15 +10,15 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 
-@PageTitle("Hello World")
-@Route(value = "hello", layout = MainLayout.class)
+@PageTitle("Button Tempalte")
+@Route(value = "button", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
-public class HelloWorldView extends HorizontalLayout {
+public class ButtonView extends HorizontalLayout {
 
     private TextField name;
     private Button sayHello;
 
-    public HelloWorldView() {
+    public ButtonView() {
         name = new TextField("Your name");
         sayHello = new Button("Say hello");
         sayHello.addClickListener(e -> {
