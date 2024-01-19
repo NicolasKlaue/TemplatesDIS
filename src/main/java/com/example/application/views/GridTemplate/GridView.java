@@ -6,7 +6,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,12 +37,13 @@ public class GridView extends VerticalLayout {
      public GridView() {
           setSizeFull();
           setupGrid();
-          AddMsCodeDialog = setupDialog(null, null, null, null, null, null, null, null);
+          AddMsCodeDialog = setupDialog(false, "", "", "", "", "", "", "", "");
           deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
           deleteButton.setEnabled(false);
           deleteButton.addClickListener(event -> DeleteMsCode());
           Button OpenDialog = new Button("Add MsCode");
-          Button FillGrid = new Button("Fill Grid");
+          Button FillGrid = new Button("Reload Grid");
+          FillGrid();
           editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
           editButton.setEnabled(false);
           editButton.addClickListener(event -> EditMsCode());
@@ -57,6 +57,7 @@ public class GridView extends VerticalLayout {
 
      private void EditMsCode() {
           editMsCodeDialog = setupDialog(
+                    true,
                     optionalMsCode.get().getMsCode(),
                     optionalMsCode.get().getEstCode(),
                     optionalMsCode.get().getFlag(),
@@ -72,11 +73,35 @@ public class GridView extends VerticalLayout {
      private void DeleteMsCode() {
           System.out.println("The MsCode: " + optionalMsCode.get().getId() + " Would be deleted right about now");
           Notification.show("MsCode with ID: " + optionalMsCode.get().getId() + " has been deleted");
+          DeleteController(optionalMsCode.get().getId());
           dataGrid.deselectAll();
           deleteButton.setEnabled(false);
      }
 
-     private Dialog setupDialog(String msCode, String estCode, String flag, String year, String se,
+     private void DeleteController(String id) {
+          HttpClient httpClient = HttpClient.newBuilder().build();
+
+          HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8081/mscode/" + id))
+                    .DELETE()
+                    .build();
+
+          try {
+               HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+
+               if (response.statusCode() == 200) {
+                    dataGrid.getDataProvider().refreshAll();
+                    FillGrid();
+
+               } else {
+                    Notification.show("Error: API returned status code " + response.statusCode());
+               }
+          } catch (IOException | InterruptedException ex) {
+               Notification.show("Error: " + ex.getMessage());
+          }
+     }
+
+     private Dialog setupDialog(Boolean Edit, String msCode, String estCode, String flag, String year, String se,
                String estimate, String lowerCIB, String upperCIB) {
           Dialog Temp = new Dialog();
           VerticalLayout dialogContent = new VerticalLayout();
@@ -85,23 +110,31 @@ public class GridView extends VerticalLayout {
           dialogFields.setSpacing(false);
 
           VerticalLayout firstColumn = new VerticalLayout();
-          TextField msCodeField = new TextField("MsCode", msCode);
+          TextField msCodeField = new TextField("MsCode");
+          msCodeField.setValue(msCode);
           firstColumn.add(msCodeField);
-          TextField estCodeField = new TextField("EstCode", estCode);
+          TextField estCodeField = new TextField("EstCode");
+          estCodeField.setValue(estCode);
           firstColumn.add(estCodeField);
-          TextField seField = new TextField("Se", se);
+          TextField seField = new TextField("Se");
+          seField.setValue(se);
           firstColumn.add(seField);
-          TextField flagField = new TextField("Flag", flag);
+          TextField flagField = new TextField("Flag");
+          flagField.setValue(flag);
           firstColumn.add(flagField);
 
           VerticalLayout secondColumn = new VerticalLayout();
-          TextField yearField = new TextField("Year", year);
+          TextField yearField = new TextField("Year");
+          yearField.setValue(year);
           secondColumn.add(yearField);
-          TextField estimateField = new TextField("Estimate", estimate);
+          TextField estimateField = new TextField("Estimate");
+          estimateField.setValue(estimate);
           secondColumn.add(estimateField);
-          TextField lowerCIBField = new TextField("Lower CIB", lowerCIB);
+          TextField lowerCIBField = new TextField("Lower CIB");
+          lowerCIBField.setValue(lowerCIB);
           secondColumn.add(lowerCIBField);
-          TextField upperCIBField = new TextField("Upper CIB", upperCIB);
+          TextField upperCIBField = new TextField("Upper CIB");
+          upperCIBField.setValue(upperCIB);
           secondColumn.add(upperCIBField);
 
           Button saveButton = new Button("Save");
@@ -115,28 +148,87 @@ public class GridView extends VerticalLayout {
 
           saveButton.addClickListener(event -> {
                MsCode newMsCode = new MsCode(
-                    msCodeField.getValue(),
-                    yearField.getValue(),
-                    Float.parseFloat(seField.getValue()),
-                    estCodeField.getValue(),
-                    Float.parseFloat(estimateField.getValue()),
-                    Float.parseFloat(lowerCIBField.getValue()),
-                    Float.parseFloat(upperCIBField.getValue()),
-                    flagField.getValue()
-                    );
+                         msCodeField.isEmpty() ? "" : msCodeField.getValue(),
+                         yearField.isEmpty() ? "" : yearField.getValue(),
+                         seField.isEmpty() ? 0.0f : Float.parseFloat(seField.getValue()),
+                         estCodeField.isEmpty() ? "" : estCodeField.getValue(),
+                         estimateField.isEmpty() ? 0.0f : Float.parseFloat(estimateField.getValue()),
+                         lowerCIBField.isEmpty() ? 0.0f : Float.parseFloat(lowerCIBField.getValue()),
+                         upperCIBField.isEmpty() ? 0.0f : Float.parseFloat(upperCIBField.getValue()),
+                         flagField.isEmpty() ? "" : flagField.getValue());
+               if (Edit) {
+                    newMsCode.setId(optionalMsCode.get().getId());
+                    PutController(newMsCode);
+               } else {
+                    AddController(newMsCode);
+               }
                Temp.close();
           });
 
           cancelButton.addClickListener(event -> {
-               // Close the dialog
                Temp.close();
           });
           return Temp;
      }
 
+     private void AddController(MsCode newMsCode) {
+          HttpClient httpClient = HttpClient.newBuilder().build();
+          Gson gson = new Gson();
+          String body = gson.toJson(newMsCode);
+
+          HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8081/mscode"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+          try {
+               HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+
+               if (response.statusCode() == 200) {
+                    dataGrid.getDataProvider().refreshAll();
+                    FillGrid();
+                    Notification.show("Success");
+
+               } else {
+                    Notification.show("Error: API returned status code " + response.statusCode());
+               }
+          } catch (IOException | InterruptedException ex) {
+               Notification.show("Error: " + ex.getMessage());
+          }
+     }
+
+     private void PutController(MsCode newMsCode) {
+          HttpClient httpClient = HttpClient.newBuilder().build();
+          Gson gson = new Gson();
+          String body = gson.toJson(newMsCode);
+          System.out.println(body);
+
+          HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8081/mscode"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+          try {
+               HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+
+               if (response.statusCode() == 200) {
+                    FillGrid();
+                    dataGrid.getDataProvider().refreshAll();
+                    Notification.show("Success");
+
+               } else {
+                    Notification.show("Error: API returned status code " + response.statusCode());
+               }
+          } catch (IOException | InterruptedException ex) {
+               Notification.show("Error: " + ex.getMessage());
+          }
+     }
+
      private void setupGrid() {
           dataGrid.addColumn(MsCode::getId).setHeader("ID");
-          dataGrid.addColumn(MsCode::getMsCode).setHeader("MsCode");
+          dataGrid.addColumn(MsCode::getMsCode).setHeader("MsCode").setSortable(true);
           dataGrid.addColumn(MsCode::getEstCode).setHeader("EstCode");
           dataGrid.addColumn(MsCode::getFlag).setHeader("Flag");
           dataGrid.addColumn(MsCode::getYear).setHeader("Year");
